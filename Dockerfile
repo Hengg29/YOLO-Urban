@@ -1,30 +1,35 @@
 FROM python:3.10-slim
 
-# Evitar bloquear instalación por i/o
-ENV DEBIAN_FRONTEND=noninteractive
+# Evitar prompts interactivos en apt
+ENV DEBIAN_FRONTEND=noninteractive \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1
 
-# Instalar dependencias del sistema necesarias para OpenCV y Ultralytics
-RUN apt-get update && apt-get install -y \
-    libgl1-mesa-glx \
+# Dependencias de sistema para OpenCV / Ultralytics
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libgl1 \
     libglib2.0-0 \
-    libgoogle-glog0v5 \
-    libgomp1 \
+    libsm6 \
+    libxext6 \
+    libxrender1 \
     && rm -rf /var/lib/apt/lists/*
 
-# Crear directorio de la app
+# Directorio de trabajo
 WORKDIR /app
 
-# Copiar requirements
+# Copiar requirements primero para aprovechar cache de Docker
 COPY requirements.txt .
 
-# Instalar Python packages
-RUN pip install --no-cache-dir -r requirements.txt
+# Instalar dependencias de Python
+RUN pip install --upgrade pip && \
+    pip install -r requirements.txt
 
 # Copiar el resto del proyecto
 COPY . .
 
-# Puerto de Streamlit
+# Puerto interno de Streamlit
 EXPOSE 8501
 
-# Comando de ejecución
-CMD ["streamlit", "run", "Siu.py", "--server.port=8501", "--server.address=0.0.0.0"]
+# Comando de arranque
+# Usa $PORT si tu plataforma de hosting lo define (Render, Railway, etc.)
+CMD ["sh", "-c", "streamlit run Siu.py --server.port=${PORT:-8501} --server.address=0.0.0.0"]
